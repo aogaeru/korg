@@ -12,6 +12,33 @@ class PatternRepo(object):
         self.pattern_dict = self._load_patterns(folders, pattern_dict)
 
     def compile_regex(self, pattern, flags=0):
+        return PatternCompiler(self.pattern_dict).compile_regex(pattern, flags)    
+
+    def _load_pattern_file(self, filename, pattern_dict):
+        pattern_re = regex.compile("^(?P<patname>\w+) (?P<pattern>.+)$")
+        with open(filename) as f:
+            lines = f.readlines()
+        for line in lines:
+            m = pattern_re.search(line)
+            if m:
+                md = m.groupdict()
+                pattern_dict[md['patname']] = md['pattern']
+
+
+    def _load_patterns(self, folders, pattern_dict={}):
+        """Load all pattern from all the files in folders"""
+        # print 'folders: %s' % folders
+        for folder in folders:
+            for file in os.listdir(folder):
+                if regex.match(r'^[\w-]+$', file):
+                    self._load_pattern_file(os.path.join(folder, file), pattern_dict)
+        return pattern_dict
+
+class PatternCompiler(object):
+    def __init__(self, pattern_dict):
+        self.pattern_dict = pattern_dict
+
+    def compile_regex(self, pattern, flags=0):
         """Compile regex from pattern and pattern_dict"""
         pattern_re = regex.compile("(?P<substr>%\{(?P<fullname>(?P<patname>\w+)(?::(?P<subname>\w+))?)\})")
         while 1:
@@ -37,27 +64,6 @@ class PatternRepo(object):
                     pattern = pattern.replace(md['substr'],repl)
         # print 'pattern: %s' % pattern
         return regex.compile(pattern, flags)
-
-
-    def _load_pattern_file(self, filename, pattern_dict):
-        pattern_re = regex.compile("^(?P<patname>\w+) (?P<pattern>.+)$")
-        with open(filename) as f:
-            lines = f.readlines()
-        for line in lines:
-            m = pattern_re.search(line)
-            if m:
-                md = m.groupdict()
-                pattern_dict[md['patname']] = md['pattern']
-
-
-    def _load_patterns(self, folders, pattern_dict={}):
-        """Load all pattern from all the files in folders"""
-        # print 'folders: %s' % folders
-        for folder in folders:
-            for file in os.listdir(folder):
-                if regex.match(r'^[\w-]+$', file):
-                    self._load_pattern_file(os.path.join(folder, file), pattern_dict)
-        return pattern_dict
 
 
 if __name__ == '__main__':
